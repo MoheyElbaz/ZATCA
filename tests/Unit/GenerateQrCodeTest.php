@@ -126,4 +126,27 @@ class GenerateQrCodeTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals(0x8A, ord($tag[1]));
         $this->assertEquals($name, substr($tag, 2));
     }
+
+    /**
+     * The tag id and the value length are both written as one byte, so the
+     * error has to say which of the two was out of range.
+     *
+     * @test
+     */
+    public function shouldReportWhichByteWasOutOfRange()
+    {
+        try {
+            (string) new Tag(256, 'a');
+            $this->fail('an out of range tag id should throw');
+        } catch (\LengthException $e) {
+            $this->assertStringContainsString('Tag id 256 is out of range', $e->getMessage());
+        }
+
+        try {
+            (string) new Tag(1, str_repeat('a', 256));
+            $this->fail('an oversized value should throw');
+        } catch (\LengthException $e) {
+            $this->assertStringContainsString('the value is 256 bytes', $e->getMessage());
+        }
+    }
 }

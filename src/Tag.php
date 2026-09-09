@@ -61,29 +61,51 @@ class Tag
     {
         $value = (string) $this->getValue();
 
-        return $this->toByte($this->getTag()).$this->toByte($this->getLength()).($value);
+        return $this->toTagByte().$this->toLengthByte().($value);
     }
 
     /**
-     * To convert the tag or the length to a single unsigned byte.
-     *
-     * @param $value
+     * To convert the tag to a single unsigned byte.
      *
      * @return string
      *
-     * @throws LengthException If the value does not fit in one byte.
+     * @throws LengthException If the tag does not fit in one byte.
      */
-    protected function toByte($value)
+    protected function toTagByte()
     {
-        if ($value < 0 || $value > self::MAX_BYTE) {
+        $tag = $this->getTag();
+
+        if ($tag < 0 || $tag > self::MAX_BYTE) {
             throw new LengthException(sprintf(
-                'Tag %d: the value is %d bytes once UTF-8 encoded, but ZATCA stores the length in a single byte (max %d).',
-                $this->getTag(),
-                $value,
+                'Tag id %d is out of range, ZATCA stores the tag in a single byte (0 to %d).',
+                $tag,
                 self::MAX_BYTE
             ));
         }
 
-        return chr($value);
+        return chr($tag);
+    }
+
+    /**
+     * To convert the length of the value to a single unsigned byte.
+     *
+     * @return string
+     *
+     * @throws LengthException If the value is too long for one length byte.
+     */
+    protected function toLengthByte()
+    {
+        $length = $this->getLength();
+
+        if ($length > self::MAX_BYTE) {
+            throw new LengthException(sprintf(
+                'Tag %d: the value is %d bytes once UTF-8 encoded, but ZATCA stores the length in a single byte (max %d).',
+                $this->getTag(),
+                $length,
+                self::MAX_BYTE
+            ));
+        }
+
+        return chr($length);
     }
 }

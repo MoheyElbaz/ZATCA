@@ -82,4 +82,48 @@ class GenerateQrCodeTest extends \PHPUnit\Framework\TestCase
 
         GenerateQrCode::fromArray([null])->toBase64();
     }
+
+    /**
+     * A seller name of 128 Arabic characters is 256 bytes in UTF-8, which does
+     * not fit in the single length byte ZATCA allows.
+     *
+     * @test
+     */
+    public function shouldThrowWhenTheValueIsTooLongForTheLengthByte()
+    {
+        $this->expectException(\LengthException::class);
+
+        (string) new Tag(1, str_repeat('a', 256));
+    }
+
+    /**
+     * @test
+     */
+    public function shouldEncodeTheLengthInASingleByteUpToTheLimit()
+    {
+        foreach ([0, 1, 127, 128, 200, 255] as $length) {
+            $tag = (string) new Tag(1, str_repeat('a', $length));
+
+            $this->assertEquals($length + 2, strlen($tag));
+            $this->assertEquals($length, ord($tag[1]));
+        }
+    }
+
+    /**
+     * A 138 byte Arabic trade name has 0x8A as its length byte. That is a
+     * plain unsigned 8-bit 138, not a BER multi byte prefix, so it round trips.
+     *
+     * @test
+     */
+    public function shouldEncodeALongArabicSellerName()
+    {
+        $name = 'مؤسسة التقنية المتقدمة للتجارة والمقاولات العامة بالمنطقة الوسطى المحدودة';
+
+        $this->assertEquals(138, strlen($name));
+
+        $tag = (string) new Tag(1, $name);
+
+        $this->assertEquals(0x8A, ord($tag[1]));
+        $this->assertEquals($name, substr($tag, 2));
+    }
 }

@@ -2,8 +2,19 @@
 
 namespace Salla\ZATCA;
 
+use LengthException;
+
 class Tag
 {
+    /**
+     * ZATCA stores the length in one byte, so a value can not exceed 255 bytes
+     * once it is UTF-8 encoded.
+     *
+     * @see E-Invoice Security Features Implementation Standards, section 4.1:
+     *      "The length shall be stored in one byte."
+     */
+    const MAX_BYTE = 255;
+
     protected $tag;
 
     protected $value;
@@ -42,23 +53,37 @@ class Tag
 
     /**
      * @return string Returns a string representing the encoded TLV data structure.
+     *
+     * @throws LengthException If the value is too long for the single length byte
+     *         ZATCA allows, which would otherwise emit a malformed TLV.
      */
     public function __toString()
     {
         $value = (string) $this->getValue();
 
-        return $this->toHex($this->getTag()).$this->toHex($this->getLength()).($value);
+        return $this->toByte($this->getTag()).$this->toByte($this->getLength()).($value);
     }
 
     /**
-     * To convert the string value to hex.
+     * To convert the tag or the length to a single unsigned byte.
      *
      * @param $value
      *
-     * @return false|string
+     * @return string
+     *
+     * @throws LengthException If the value does not fit in one byte.
      */
-    protected function toHex($value)
+    protected function toByte($value)
     {
-        return pack("H*", sprintf("%02X", $value));
+        if ($value < 0 || $value > self::MAX_BYTE) {
+            throw new LengthException(sprintf(
+                'Tag %d: the value is %d bytes once UTF-8 encoded, but ZATCA stores the length in a single byte (max %d).',
+                $this->getTag(),
+                $value,
+                self::MAX_BYTE
+            ));
+        }
+
+        return chr($value);
     }
 }
